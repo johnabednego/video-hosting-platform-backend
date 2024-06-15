@@ -38,6 +38,8 @@ const { uploadVideo, getVideoById, getAllVideos } = require('../controllers/vide
  *     responses:
  *       200:
  *         description: Video uploaded successfully
+ *       401:
+ *         description: No token, authorization denied
  *       500:
  *         description: Server error
  */
@@ -61,6 +63,8 @@ router.post('/upload', auth, uploadVideo);
  *     responses:
  *       200:
  *         description: Video retrieved successfully
+ *       401:
+ *         description: No token, authorization denied
  *       404:
  *         description: Video not found
  *       500:
@@ -79,6 +83,8 @@ router.get('/:id', auth, getVideoById);
  *     responses:
  *       200:
  *         description: Videos retrieved successfully
+ *       401:
+ *         description: No token, authorization denied
  *       500:
  *         description: Server error
  */
