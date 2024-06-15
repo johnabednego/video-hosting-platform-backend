@@ -6,8 +6,8 @@ const crypto = require('crypto');
 require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: process.env.EMAIL_PORT,
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: process.env.EMAIL_PORT || 587,
     secure: false, // true for 465, false for other ports
     auth: {
         user: process.env.EMAIL_USER,
@@ -28,20 +28,14 @@ exports.register = async (req, res) => {
             return res.status(400).json({ msg: 'User already exists' });
         }
 
-        user = new User({
-            name,
-            email,
-            password,
-        });
-
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(password, salt);
-
-        await user.save();
+        const hashedPassword = await bcrypt.hash(password, salt);
 
         const payload = {
             user: {
-                id: user.id,
+                name,
+                email,
+                password: hashedPassword,
             },
         };
 
@@ -49,9 +43,33 @@ exports.register = async (req, res) => {
             expiresIn: 360000,
         });
 
-        sendVerificationEmail(user, token);
+        const verificationUrl = `http://${process.env.HOST}/api/auth/verify-email?token=${token}`;
 
-        res.json({ token });
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Account Verification',
+            text: `Hello ${name},\n\nPlease verify your account by clicking the link: \n${verificationUrl}\n\nThank You!\n`,
+        };
+
+        transporter.sendMail(mailOptions, async (error, info) => {
+            if (error) {
+                console.log(error);
+                return res.status(500).json({ msg: 'Verification email could not be sent. Please try again.' });
+            }
+
+            console.log('Email sent: ' + info.response);
+
+            user = new User({
+                name,
+                email,
+                password: hashedPassword,
+            });
+
+            await user.save();
+
+            res.json({ msg: 'User registered successfully. Please check your email to verify your account.' });
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -90,33 +108,23 @@ exports.login = async (req, res) => {
     }
 };
 
-// Send Verification Email
-const sendVerificationEmail = (user, token) => {
-    const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: user.email,
-        subject: 'Account Verification',
-        text: `Hello ${user.name},\n\nPlease verify your account by clicking the link: \nhttp:\/\/${process.env.HOST}\/api\/auth\/verify-email?token=${token}\n\nThank You!\n`,
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-        if (error) {
-            return console.log(error);
-        }
-        console.log('Email sent: ' + info.response);
-    });
-};
-
 // Verify Email
 exports.verifyEmail = async (req, res) => {
     const token = req.query.token;
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.user.id);
+        let user = await User.findOne({ email: decoded.user.email });
 
         if (!user) {
-            return res.status(400).json({ msg: 'Invalid Token' });
+            user = new User(decoded.user);
+            user.isVerified = true;
+            await user.save();
+            return res.json({ msg: 'Account verified and user saved successfully' });
+        }
+
+        if (user.isVerified) {
+            return res.status(400).json({ msg: 'User already verified' });
         }
 
         user.isVerified = true;
