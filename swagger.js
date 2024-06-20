@@ -14,7 +14,10 @@ const swaggerOptions = {
             },
             servers: [
                 {
-                    url: `http://localhost:${process.env.PORT}`,
+                    url: `http://localhost:5000`,
+                },
+                {
+                    url: `https://videohostingplatform.vercel.app`,
                 },
             ],
         },
