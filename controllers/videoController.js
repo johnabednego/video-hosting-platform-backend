@@ -1,7 +1,7 @@
 const Video = require('../models/Video');
 
 // Upload Video
-exports.uploadVideo = async (req, res) => {
+exports.uploadVideo = async (req, res, next) => {
     const { title, description, videoUrl } = req.body;
 
     try {
@@ -14,32 +14,31 @@ exports.uploadVideo = async (req, res) => {
         const video = await newVideo.save();
         res.json(video);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err); // Pass the error to the error handling middleware
     }
 };
 
 // Get Video by ID
-exports.getVideoById = async (req, res) => {
+exports.getVideoById = async (req, res, next) => {
     try {
         const video = await Video.findById(req.params.id);
         if (!video) {
-            return res.status(404).json({ msg: 'Video not found' });
+            const error = new Error('Video not found');
+            error.status = 404;
+            throw error;
         }
         res.json(video);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };
 
 // Get All Videos
-exports.getAllVideos = async (req, res) => {
+exports.getAllVideos = async (req, res, next) => {
     try {
         const videos = await Video.find().sort({ date: -1 });
         res.json(videos);
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };

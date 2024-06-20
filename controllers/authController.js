@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
 });
 
 // Register User
-exports.register = async (req, res) => {
+exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
 
     try {
@@ -71,13 +71,12 @@ exports.register = async (req, res) => {
             res.json({ msg: 'User registered successfully. Please check your email to verify your account.' });
         });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };
 
 // Login User
-exports.login = async (req, res) => {
+exports.login = async (req, res, next) => {
     const { email, password } = req.body;
 
     try {
@@ -103,13 +102,12 @@ exports.login = async (req, res) => {
 
         res.json({ token });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };
 
 // Verify Email
-exports.verifyEmail = async (req, res) => {
+exports.verifyEmail = async (req, res, next) => {
     const token = req.query.token;
 
     try {
@@ -132,13 +130,12 @@ exports.verifyEmail = async (req, res) => {
 
         res.json({ msg: 'Account verified successfully' });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };
 
 // Reset Password
-exports.resetPassword = async (req, res) => {
+exports.resetPassword = async (req, res, next) => {
     const { email } = req.body;
 
     try {
@@ -172,13 +169,12 @@ exports.resetPassword = async (req, res) => {
 
         res.json({ msg: 'Password reset email sent' });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };
 
 // Set New Password
-exports.setNewPassword = async (req, res) => {
+exports.setNewPassword = async (req, res, next) => {
     const { token, newPassword } = req.body;
 
     try {
@@ -201,7 +197,6 @@ exports.setNewPassword = async (req, res) => {
 
         res.json({ msg: 'Password reset successfully' });
     } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
+        next(err);
     }
 };

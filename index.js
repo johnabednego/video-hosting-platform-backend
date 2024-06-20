@@ -1,6 +1,7 @@
 const express = require('express');
 const connectDB = require('./config/db');
 const swaggerSetup = require('./swagger');
+const errorHandler = require('./middleware/errorHandler');
 require('dotenv').config();
 
 const app = express();
@@ -14,6 +15,9 @@ app.use(express.json({ extended: false }));
 // Define Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/videos', require('./routes/videoRoutes'));
+
+// Error Handling Middleware
+app.use(errorHandler);
 
 // Setup Swagger
 swaggerSetup(app);
