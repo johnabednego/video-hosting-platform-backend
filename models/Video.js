@@ -3,14 +3,18 @@ const mongoose = require('mongoose');
 const VideoSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true,
+        required: [true, 'Title is required'],
     },
     description: {
         type: String,
+        required: [true, 'Description is required'],
     },
     videoUrl: {
         type: String,
-        required: true,
+    },
+    videoFileId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'uploads.files',
     },
     date: {
         type: Date,
