@@ -43,7 +43,7 @@ exports.register = async (req, res) => {
             expiresIn: 360000,
         });
 
-        const verificationUrl = `http://${process.env.HOST}/api/auth/verify-email?token=${token}`;
+        const verificationUrl = `https://videohostingplatform.vercel.app/api/auth/verify-email?token=${token}`;
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
@@ -154,7 +154,7 @@ exports.resetPassword = async (req, res) => {
 
         await user.save();
 
-        const resetUrl = `http://${process.env.HOST}/reset-password?token=${resetToken}`;
+        const resetUrl = `https://videohostingplatform.vercel.app/reset-password?token=${resetToken}`;
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
