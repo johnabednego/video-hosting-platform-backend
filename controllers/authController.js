@@ -23,9 +23,13 @@ exports.register = async (req, res, next) => {
     const { name, email, password } = req.body;
 
     try {
+        if (!name || !email || !password) {
+            return res.status(400).json({ success: false, msg: 'Please provide name, email, and password' });
+        }
+
         let user = await User.findOne({ email });
         if (user) {
-            return res.status(400).json({ msg: 'User already exists' });
+            return res.status(400).json({ success: false, msg: 'User already exists' });
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -40,7 +44,7 @@ exports.register = async (req, res, next) => {
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: 360000,
+            expiresIn: '1h',
         });
 
         const verificationUrl = `https://videohostingplatform.vercel.app/api/auth/verify-email?token=${token}`;
@@ -68,7 +72,7 @@ exports.register = async (req, res, next) => {
 
             await user.save();
 
-            res.json({ msg: 'User registered successfully. Please check your email to verify your account.' });
+            res.status(201).json({ success: true, msg: 'User registered successfully. Please check your email to verify your account.' });
         });
     } catch (err) {
         next(err);
@@ -80,14 +84,18 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
 
     try {
+        if (!email || !password) {
+            return res.status(400).json({ success: false, msg: 'Please provide email and password' });
+        }
+
         let user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ msg: 'Invalid Credentials' });
+            return res.status(400).json({ success: false, msg: 'Invalid Credentials' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(400).json({ msg: 'Invalid Credentials' });
+            return res.status(400).json({ success: false, msg: 'Invalid Credentials' });
         }
 
         const payload = {
@@ -97,10 +105,10 @@ exports.login = async (req, res, next) => {
         };
 
         const token = jwt.sign(payload, process.env.JWT_SECRET, {
-            expiresIn: 360000,
+            expiresIn: '1h',
         });
 
-        res.json({ token });
+        res.json({ success: true, token });
     } catch (err) {
         next(err);
     }
@@ -118,18 +126,24 @@ exports.verifyEmail = async (req, res, next) => {
             user = new User(decoded.user);
             user.isVerified = true;
             await user.save();
-            return res.json({ msg: 'Account verified and user saved successfully' });
+            return res.json({ success: true, msg: 'Account verified and user saved successfully' });
         }
 
         if (user.isVerified) {
-            return res.status(400).json({ msg: 'User already verified' });
+            return res.status(400).json({ success: false, msg: 'User already verified' });
         }
 
         user.isVerified = true;
         await user.save();
 
-        res.json({ msg: 'Account verified successfully' });
+        res.json({ success: true, msg: 'Account verified successfully' });
     } catch (err) {
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({ msg: 'Verification token expired' });
+        }
+        if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({ msg: 'Invalid verification token' });
+        }
         next(err);
     }
 };
@@ -139,9 +153,13 @@ exports.resetPassword = async (req, res, next) => {
     const { email } = req.body;
 
     try {
+        if (!email) {
+            return res.status(400).json({ success: false, msg: 'Please provide an email' });
+        }
+
         let user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ msg: 'User not found' });
+            return res.status(400).json({ success: false, msg: 'User not found' });
         }
 
         const resetToken = crypto.randomBytes(20).toString('hex');
@@ -167,7 +185,7 @@ exports.resetPassword = async (req, res, next) => {
             console.log('Email sent: ' + info.response);
         });
 
-        res.json({ msg: 'Password reset email sent' });
+        res.json({ success: true, msg: 'Password reset email sent' });
     } catch (err) {
         next(err);
     }
@@ -178,13 +196,17 @@ exports.setNewPassword = async (req, res, next) => {
     const { token, newPassword } = req.body;
 
     try {
+        if (!token || !newPassword) {
+            return res.status(400).json({ success: false, msg: 'Please provide token and new password' });
+        }
+
         let user = await User.findOne({
             resetPasswordToken: token,
             resetPasswordExpires: { $gt: Date.now() },
         });
 
         if (!user) {
-            return res.status(400).json({ msg: 'Invalid or expired token' });
+            return res.status(400).json({ success: false, msg: 'Invalid or expired token' });
         }
 
         const salt = await bcrypt.genSalt(10);
@@ -195,7 +217,7 @@ exports.setNewPassword = async (req, res, next) => {
 
         await user.save();
 
-        res.json({ msg: 'Password reset successfully' });
+        res.json({ success: true, msg: 'Password reset successfully' });
     } catch (err) {
         next(err);
     }

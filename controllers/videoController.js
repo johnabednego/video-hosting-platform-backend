@@ -5,6 +5,10 @@ exports.uploadVideo = async (req, res, next) => {
     const { title, description, videoUrl } = req.body;
 
     try {
+        if (!title || !description || !videoUrl) {
+            return res.status(400).json({ success: false, msg: 'Please provide title, description, and videoUrl' });
+        }
+
         const newVideo = new Video({
             title,
             description,
@@ -12,7 +16,7 @@ exports.uploadVideo = async (req, res, next) => {
         });
 
         const video = await newVideo.save();
-        res.json(video);
+        res.status(201).json({ success: true, data: video });
     } catch (err) {
         next(err); // Pass the error to the error handling middleware
     }
@@ -23,11 +27,9 @@ exports.getVideoById = async (req, res, next) => {
     try {
         const video = await Video.findById(req.params.id);
         if (!video) {
-            const error = new Error('Video not found');
-            error.status = 404;
-            throw error;
+            return res.status(404).json({ success: false, msg: 'Video not found' });
         }
-        res.json(video);
+        res.json({ success: true, data: video });
     } catch (err) {
         next(err);
     }
@@ -37,7 +39,7 @@ exports.getVideoById = async (req, res, next) => {
 exports.getAllVideos = async (req, res, next) => {
     try {
         const videos = await Video.find().sort({ date: -1 });
-        res.json(videos);
+        res.json({ success: true, data: videos });
     } catch (err) {
         next(err);
     }
