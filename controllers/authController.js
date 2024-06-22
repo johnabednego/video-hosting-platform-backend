@@ -42,7 +42,9 @@ exports.register = async (req, res, next) => {
             role: role || 'user', // Default to 'user' if no role is specified
         });
 
-        const token = jwt.sign({ user: { id: user.id } }, process.env.JWT_SECRET, {
+        const savedUser = await user.save();
+
+        const token = jwt.sign({ userId: savedUser._id }, process.env.JWT_SECRET, {
             expiresIn: '1h',
         });
 
@@ -55,13 +57,11 @@ exports.register = async (req, res, next) => {
             text: `Hello ${name},\n\nPlease verify your account by clicking the link: \n${verificationUrl}\n\nThank You!\n`,
         };
 
-        transporter.sendMail(mailOptions, async (error, info) => {
+        transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log(error);
                 return res.status(500).json({ msg: 'Verification email could not be sent. Please try again.' });
             }
-
-            await user.save();
 
             res.status(201).json({ success: true, msg: 'User registered successfully. Please check your email to verify your account.' });
         });
@@ -117,13 +117,10 @@ exports.verifyEmail = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        let user = await User.findOne({ email: decoded.user.email });
+        const user = await User.findById(decoded.userId);
 
         if (!user) {
-            user = new User(decoded.user);
-            user.isVerified = true;
-            await user.save();
-            return res.json({ success: true, msg: 'Account verified and user saved successfully' });
+            return res.status(400).json({ success: false, msg: 'Invalid token' });
         }
 
         if (user.isVerified) {
