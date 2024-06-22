@@ -16,10 +16,6 @@ const VideoSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'uploads.files',
     },
-    date: {
-        type: Date,
-        default: Date.now,
-    },
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('Video', VideoSchema);

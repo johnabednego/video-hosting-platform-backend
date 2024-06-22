@@ -8,7 +8,7 @@ require('dotenv').config();
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
     port: process.env.EMAIL_PORT || 587,
-    secure: false, // true for 465, false for other ports
+    secure: false,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -20,7 +20,7 @@ const transporter = nodemailer.createTransport({
 
 // Register User
 exports.register = async (req, res, next) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     try {
         if (!name || !email || !password) {
@@ -35,15 +35,14 @@ exports.register = async (req, res, next) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const payload = {
-            user: {
-                name,
-                email,
-                password: hashedPassword,
-            },
-        };
+        user = new User({
+            name,
+            email,
+            password: hashedPassword,
+            role: role || 'user', // Default to 'user' if no role is specified
+        });
 
-        const token = jwt.sign(payload, process.env.JWT_SECRET, {
+        const token = jwt.sign({ user: { id: user.id } }, process.env.JWT_SECRET, {
             expiresIn: '1h',
         });
 
@@ -61,14 +60,6 @@ exports.register = async (req, res, next) => {
                 console.log(error);
                 return res.status(500).json({ msg: 'Verification email could not be sent. Please try again.' });
             }
-
-            console.log('Email sent: ' + info.response);
-
-            user = new User({
-                name,
-                email,
-                password: hashedPassword,
-            });
 
             await user.save();
 
@@ -88,7 +79,7 @@ exports.login = async (req, res, next) => {
             return res.status(400).json({ success: false, msg: 'Please provide email and password' });
         }
 
-        let user = await User.findOne({ email });
+        const user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ success: false, msg: 'Invalid Credentials' });
         }
@@ -101,6 +92,7 @@ exports.login = async (req, res, next) => {
         const payload = {
             user: {
                 id: user.id,
+                role: user.role, // Include the role in the token payload
             },
         };
 
