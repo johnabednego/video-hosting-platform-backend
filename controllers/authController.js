@@ -84,6 +84,10 @@ exports.login = async (req, res, next) => {
             return res.status(400).json({ success: false, msg: 'Invalid Credentials' });
         }
 
+        if (!user.isVerified) {
+            return res.status(400).json({ success: false, msg: 'Please verify your email before logging in' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ success: false, msg: 'Invalid Credentials' });
@@ -105,6 +109,7 @@ exports.login = async (req, res, next) => {
         next(err);
     }
 };
+
 
 // Verify Email
 exports.verifyEmail = async (req, res, next) => {
