@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
-const upload = require('../middleware/upload');
 const { uploadVideo, getVideoById, getAllVideos, getVideoStream } = require('../controllers/videoController');
+const upload = require('../middleware/upload');
 
 /**
  * @swagger
@@ -18,7 +18,7 @@ const { uploadVideo, getVideoById, getAllVideos, getVideoStream } = require('../
  *     summary: Upload a new video
  *     tags: [Videos]
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -30,18 +30,18 @@ const { uploadVideo, getVideoById, getAllVideos, getVideoStream } = require('../
  *                 type: string
  *               description:
  *                 type: string
- *               videoUrl:
- *                 type: string
  *               videoFile:
  *                 type: string
  *                 format: binary
+ *               videoUrl:
+ *                 type: string
  *     responses:
  *       201:
  *         description: Video uploaded successfully
  *       400:
  *         description: Bad request
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.post('/upload', auth, upload.single('videoFile'), uploadVideo);
 
@@ -52,7 +52,7 @@ router.post('/upload', auth, upload.single('videoFile'), uploadVideo);
  *     summary: Get video by ID
  *     tags: [Videos]
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -66,7 +66,7 @@ router.post('/upload', auth, upload.single('videoFile'), uploadVideo);
  *       404:
  *         description: Video not found
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.get('/:id', auth, getVideoById);
 
@@ -77,12 +77,12 @@ router.get('/:id', auth, getVideoById);
  *     summary: Get all videos
  *     tags: [Videos]
  *     security:
- *       - bearerAuth: []
+ *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: Videos retrieved successfully
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.get('/', auth, getAllVideos);
 
@@ -101,11 +101,11 @@ router.get('/', auth, getAllVideos);
  *         description: Video filename
  *     responses:
  *       200:
- *         description: Video stream
+ *         description: Video streamed successfully
  *       404:
  *         description: Video not found
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.get('/stream/:filename', getVideoStream);
 

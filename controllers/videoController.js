@@ -4,6 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const { getGridfsBucket } = require('../config/db');
 
+// Supported video MIME types
+const supportedVideoTypes = ['video/mp4', 'video/x-msvideo', 'video/x-ms-wmv', 'video/mpeg', 'video/ogg', 'video/webm'];
+const MAX_FILE_SIZE = 1024 * 1024 * 500; // 500MB
+
 // Upload Video
 exports.uploadVideo = async (req, res, next) => {
     const { title, description, videoUrl } = req.body;
@@ -16,6 +20,18 @@ exports.uploadVideo = async (req, res, next) => {
 
         if (req.file) {
             console.log('File upload successful:', req.file);
+
+            // Check if the uploaded file is a video
+            if (!supportedVideoTypes.includes(req.file.mimetype)) {
+                fs.unlinkSync(req.file.path); // Delete the non-video file
+                return res.status(400).json({ success: false, msg: 'The uploaded file is not a supported video format' });
+            }
+
+            // Check file size
+            if (req.file.size > MAX_FILE_SIZE) {
+                fs.unlinkSync(req.file.path); // Delete the large file
+                return res.status(400).json({ success: false, msg: 'The uploaded file is too large' });
+            }
 
             // Create a read stream from the temporary file
             const filePath = path.join(__dirname, '..', 'uploads', req.file.filename);

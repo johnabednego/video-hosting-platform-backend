@@ -12,7 +12,7 @@ const storage = multer.diskStorage({
             if (err) {
                 return cb(err);
             }
-            const filename = buf.toString('hex') + path.extname(file.originalname);
+            const filename = file.originalname;
             cb(null, filename);
         });
     }

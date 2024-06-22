@@ -5,8 +5,8 @@ const { register, login, verifyEmail, resetPassword, setNewPassword } = require(
 /**
  * @swagger
  * tags:
- *   name: Authentication
- *   description: User authentication and authorization
+ *   name: Auth
+ *   description: Authentication and User Management
  */
 
 /**
@@ -14,31 +14,20 @@ const { register, login, verifyEmail, resetPassword, setNewPassword } = require(
  * /api/auth/register:
  *   post:
  *     summary: Register a new user
- *     tags: [Authentication]
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *               - password
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
+ *             $ref: '#/components/schemas/User'
  *     responses:
- *       200:
+ *       201:
  *         description: User registered successfully
  *       400:
- *         description: User already exists
+ *         description: Bad request
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.post('/register', register);
 
@@ -47,28 +36,20 @@ router.post('/register', register);
  * /api/auth/login:
  *   post:
  *     summary: Login a user
- *     tags: [Authentication]
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *               - password
- *             properties:
- *               email:
- *                 type: string
- *               password:
- *                 type: string
+ *             $ref: '#/components/schemas/UserLogin'
  *     responses:
  *       200:
  *         description: User logged in successfully
  *       400:
  *         description: Invalid credentials
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.post('/login', login);
 
@@ -77,7 +58,7 @@ router.post('/login', login);
  * /api/auth/verify-email:
  *   get:
  *     summary: Verify user email
- *     tags: [Authentication]
+ *     tags: [Auth]
  *     parameters:
  *       - in: query
  *         name: token
@@ -87,11 +68,11 @@ router.post('/login', login);
  *         description: Verification token
  *     responses:
  *       200:
- *         description: Account verified successfully
+ *         description: Email verified successfully
  *       400:
  *         description: Invalid token
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.get('/verify-email', verifyEmail);
 
@@ -99,26 +80,25 @@ router.get('/verify-email', verifyEmail);
  * @swagger
  * /api/auth/reset-password:
  *   post:
- *     summary: Reset password
- *     tags: [Authentication]
+ *     summary: Reset user password
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
  *             properties:
  *               email:
  *                 type: string
+ *                 example: user@example.com
  *     responses:
  *       200:
  *         description: Password reset email sent
  *       400:
  *         description: User not found
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.post('/reset-password', resetPassword);
 
@@ -126,17 +106,14 @@ router.post('/reset-password', resetPassword);
  * @swagger
  * /api/auth/set-new-password:
  *   post:
- *     summary: Set new password
- *     tags: [Authentication]
+ *     summary: Set a new password using the token
+ *     tags: [Auth]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - token
- *               - newPassword
  *             properties:
  *               token:
  *                 type: string
@@ -148,7 +125,7 @@ router.post('/reset-password', resetPassword);
  *       400:
  *         description: Invalid or expired token
  *       500:
- *         description: Server error
+ *         description: Internal server error
  */
 router.post('/set-new-password', setNewPassword);
 

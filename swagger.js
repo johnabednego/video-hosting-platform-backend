@@ -1,12 +1,12 @@
-const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerJsdoc = require("swagger-jsdoc");
 
 const options = {
   definition: {
-    openapi: '3.0.0',
+    openapi: "3.0.0",
     info: {
-      title: 'Video Hosting Platform API',
-      version: '1.0.0',
-      description: 'API documentation for the Video Hosting Platform application',
+      title: "Asset Tracking API",
+      version: "1.0.0",
+      description: "API documentation for the Asset Tracking application",
     },
     servers: [
       {
@@ -19,77 +19,77 @@ const options = {
     components: {
       securitySchemes: {
         BearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
       },
       schemas: {
         User: {
-          type: 'object',
-          required: ['name', 'email', 'password', 'role'],
+          type: "object",
+          required: ["name", "email", "password", "role"],
           properties: {
             name: {
-              type: 'string',
+              type: "string",
             },
             email: {
-              type: 'string',
+              type: "string",
             },
             password: {
-              type: 'string',
+              type: "string",
             },
             role: {
-              type: 'string',
-              enum: ['admin', 'user'],
+              type: "string",
+              enum: ["admin", "user"],
             },
           },
         },
         UserLogin: {
-          type: 'object',
-          required: ['email', 'password'],
+          type: "object",
+          required: ["email", "password"],
           properties: {
             email: {
-              type: 'string',
+              type: "string",
             },
             password: {
-              type: 'string',
+              type: "string",
             },
           },
         },
         UserUpdate: {
-          type: 'object',
+          type: "object",
           properties: {
             name: {
-              type: 'string',
+              type: "string",
             },
             email: {
-              type: 'string',
+              type: "string",
             },
             role: {
-              type: 'string',
-              enum: ['admin', 'user'],
+              type: "string",
+              enum: ["admin", "user"],
             },
           },
         },
         Video: {
-          type: 'object',
-          required: ['title', 'description'],
+          type: "object",
+          required: ["title", "description"],
           properties: {
             title: {
-              type: 'string',
+              type: "string",
             },
             description: {
-              type: 'string',
+              type: "string",
             },
             videoUrl: {
-              type: 'string',
+              type: "string",
             },
             videoFileId: {
-              type: 'string',
+              type: "string",
             },
             date: {
-              type: 'string',
-              format: 'date-time',
+              type: "string",
+              format: "date-time",
             },
           },
         },
@@ -101,7 +101,7 @@ const options = {
       },
     ],
   },
-  apis: ['./routes/*.js'], // Files containing annotations as above
+  apis: ["./routes/*.js"], // Files containing annotations as above
 };
 
 const swaggerSpec = swaggerJsdoc(options);
