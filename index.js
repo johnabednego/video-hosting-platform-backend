@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const { connectDB } = require('./config/db');
-const swaggerSetup = require('./swagger');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 const errorHandler = require('./middleware/errorHandler');
 require('dotenv').config();
 
@@ -27,8 +28,8 @@ app.use('/api/videos', require('./routes/videoRoutes'));
 // Error Handling Middleware
 app.use(errorHandler);
 
-// Setup Swagger
-swaggerSetup(app);
+// Swagger UI setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 const PORT = process.env.PORT || 5000;
 
