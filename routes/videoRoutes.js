@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/authMiddleware');
-const { uploadVideo, getVideoById, getAllVideos, getVideoStream } = require('../controllers/videoController');
+const { getVideoById, getAllVideos, getVideoStream, getThumbnailStream, uploadVideo } = require('../controllers/videoController');
 const upload = require('../middleware/upload');
+const auth = require('../middleware/authMiddleware');
 
 /**
  * @swagger
@@ -35,6 +35,9 @@ const upload = require('../middleware/upload');
  *                 format: binary
  *               videoUrl:
  *                 type: string
+ *               thumbnail:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Video uploaded successfully
@@ -43,7 +46,7 @@ const upload = require('../middleware/upload');
  *       500:
  *         description: Internal server error
  */
-router.post('/upload', auth, upload.single('videoFile'), uploadVideo);
+router.post('/upload', auth, upload.fields([{ name: 'videoFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), uploadVideo);
 
 /**
  * @swagger
@@ -108,5 +111,30 @@ router.get('/', auth, getAllVideos);
  *         description: Internal server error
  */
 router.get('/stream/:filename', getVideoStream);
+
+/**
+ * @swagger
+ * /api/videos/thumbnail/{id}:
+ *   get:
+ *     summary: Get thumbnail by video ID
+ *     tags: [Videos]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Video ID
+ *     responses:
+ *       200:
+ *         description: Thumbnail retrieved successfully
+ *       404:
+ *         description: Thumbnail not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/thumbnail/:id', getThumbnailStream);
 
 module.exports = router;
