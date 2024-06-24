@@ -2,7 +2,6 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
-const crypto = require('crypto');
 require('dotenv').config();
 
 const transporter = nodemailer.createTransport({
@@ -17,6 +16,28 @@ const transporter = nodemailer.createTransport({
         rejectUnauthorized: false,
     },
 });
+
+// Generate OTP
+const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+}
+
+// Send OTP via email
+const sendOTPEmail = async (email, subject, text) => {
+    const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: subject,
+        text: text,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
 
 // Register User
 exports.register = async (req, res, next) => {
@@ -35,36 +56,28 @@ exports.register = async (req, res, next) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        const otp = generateOTP();
         user = new User({
             name,
             email,
             password: hashedPassword,
             role: role || 'user', // Default to 'user' if no role is specified
+            emailVerificationOTP: otp,
+            emailVerificationExpires: Date.now() + 3600000, // 1 hour
         });
 
-        const savedUser = await user.save();
+        await user.save();
 
-        const token = jwt.sign({ userId: savedUser._id }, process.env.JWT_SECRET, {
-            expiresIn: '1h',
-        });
+        const subject = 'Videoplay Account Verification';
+        const text = `Hello ${name},\n\nPlease verify your account using the OTP: ${otp}\n\nThank You!\n`;
 
-        const verificationUrl = `https://videohostingplatform.vercel.app/api/auth/verify-email?token=${token}`;
+        const emailResponse = await sendOTPEmail(email, subject, text);
 
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: email,
-            subject: 'Account Verification',
-            text: `Hello ${name},\n\nPlease verify your account by clicking the link: \n${verificationUrl}\n\nThank You!\n`,
-        };
+        if (!emailResponse.success) {
+            return res.status(500).json({ success: false, msg: 'Failed to send verification email', error: emailResponse.error });
+        }
 
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log(error);
-                return res.status(500).json({ msg: 'Verification email could not be sent. Please try again.' });
-            }
-
-            res.status(201).json({ success: true, msg: 'User registered successfully. Please check your email to verify your account.' });
-        });
+        res.status(201).json({ success: true, msg: 'User registered successfully. Please check your email to verify your account.' });
     } catch (err) {
         next(err);
     }
@@ -110,40 +123,38 @@ exports.login = async (req, res, next) => {
     }
 };
 
-
-// Verify Email
-exports.verifyEmail = async (req, res, next) => {
-    const token = req.query.token;
+// Verify Email OTP
+exports.verifyEmailOTP = async (req, res, next) => {
+    const { email, otp } = req.body;
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await User.findById(decoded.userId);
-
+        const user = await User.findOne({ email });
         if (!user) {
-            return res.status(400).json({ success: false, msg: 'Invalid token' });
+            return res.status(400).json({ success: false, msg: 'User not found' });
         }
 
         if (user.isVerified) {
             return res.status(400).json({ success: false, msg: 'User already verified' });
         }
 
+        if (user.emailVerificationOTP !== otp || Date.now() > user.emailVerificationExpires) {
+            return res.status(400).json({ success: false, msg: 'Invalid or expired OTP' });
+        }
+
         user.isVerified = true;
+        user.emailVerificationOTP = undefined;
+        user.emailVerificationExpires = undefined;
+
         await user.save();
 
-        res.json({ success: true, msg: 'Account verified successfully' });
+        res.json({ success: true, msg: 'Email verified successfully' });
     } catch (err) {
-        if (err.name === 'TokenExpiredError') {
-            return res.status(401).json({ msg: 'Verification token expired' });
-        }
-        if (err.name === 'JsonWebTokenError') {
-            return res.status(401).json({ msg: 'Invalid verification token' });
-        }
         next(err);
     }
 };
 
-// Reset Password
-exports.resetPassword = async (req, res, next) => {
+// Request Password Reset
+exports.requestPasswordReset = async (req, res, next) => {
     const { email } = req.body;
 
     try {
@@ -156,62 +167,153 @@ exports.resetPassword = async (req, res, next) => {
             return res.status(400).json({ success: false, msg: 'User not found' });
         }
 
-        const resetToken = crypto.randomBytes(20).toString('hex');
+        const otp = generateOTP();
 
-        user.resetPasswordToken = resetToken;
+        user.resetPasswordOTP = otp;
         user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
 
         await user.save();
 
-        const resetUrl = `https://videohostingplatform.vercel.app/reset-password?token=${resetToken}`;
+        const subject = 'Videoplay Password Reset';
+        const text = `Hello,\n\nPlease reset your password using the OTP: ${otp}\n\nThank You!\n`;
 
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: user.email,
-            subject: 'Password Reset',
-            text: `Hello,\n\nPlease reset your password by clicking the link: \n${resetUrl}\n\nThank You!\n`,
-        };
+        const emailResponse = await sendOTPEmail(email, subject, text);
 
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                return console.log(error);
-            }
-            console.log('Email sent: ' + info.response);
-        });
+        if (!emailResponse.success) {
+            return res.status(500).json({ success: false, msg: 'Failed to send password reset email', error: emailResponse.error });
+        }
 
-        res.json({ success: true, msg: 'Password reset email sent' });
+        res.json({ success: true, msg: 'Password reset OTP sent' });
     } catch (err) {
         next(err);
     }
 };
 
-// Set New Password
-exports.setNewPassword = async (req, res, next) => {
-    const { token, newPassword } = req.body;
+// Verify Password Reset OTP
+exports.verifyPasswordResetOTP = async (req, res, next) => {
+    const { email, otp } = req.body;
 
     try {
-        if (!token || !newPassword) {
-            return res.status(400).json({ success: false, msg: 'Please provide token and new password' });
+        if (!email || !otp) {
+            return res.status(400).json({ success: false, msg: 'Please provide email and OTP' });
         }
 
         let user = await User.findOne({
-            resetPasswordToken: token,
+            email,
+            resetPasswordOTP: otp,
             resetPasswordExpires: { $gt: Date.now() },
         });
 
         if (!user) {
-            return res.status(400).json({ success: false, msg: 'Invalid or expired token' });
+            return res.status(400).json({ success: false, msg: 'Invalid or expired OTP' });
+        }
+
+        res.json({ success: true, msg: 'OTP verified successfully' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// Set New Password
+exports.setNewPassword = async (req, res, next) => {
+    const { email, newPassword } = req.body;
+
+    try {
+        if (!email || !newPassword) {
+            return res.status(400).json({ success: false, msg: 'Please provide email and new password' });
+        }
+
+        let user = await User.findOne({ email });
+
+        if (!user || !user.resetPasswordOTP || !user.resetPasswordExpires || Date.now() > user.resetPasswordExpires) {
+            return res.status(400).json({ success: false, msg: 'Invalid or expired OTP' });
         }
 
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
 
-        user.resetPasswordToken = undefined;
+        user.resetPasswordOTP = undefined;
         user.resetPasswordExpires = undefined;
 
         await user.save();
 
         res.json({ success: true, msg: 'Password reset successfully' });
+    } catch (err) {
+        next(err);
+    }
+};
+
+
+// Verify Password Reset OTP and Set New Password
+// exports.verifyPasswordResetOTP = async (req, res, next) => {
+//     const { email, otp, newPassword } = req.body;
+
+//     try {
+//         if (!email || !otp || !newPassword) {
+//             return res.status(400).json({ success: false, msg: 'Please provide email, OTP, and new password' });
+//         }
+
+//         let user = await User.findOne({
+//             email,
+//             resetPasswordOTP: otp,
+//             resetPasswordExpires: { $gt: Date.now() },
+//         });
+
+//         if (!user) {
+//             return res.status(400).json({ success: false, msg: 'Invalid or expired OTP' });
+//         }
+
+//         const salt = await bcrypt.genSalt(10);
+//         user.password = await bcrypt.hash(newPassword, salt);
+
+//         user.resetPasswordOTP = undefined;
+//         user.resetPasswordExpires = undefined;
+
+//         await user.save();
+
+//         res.json({ success: true, msg: 'Password reset successfully' });
+//     } catch (err) {
+//         next(err);
+//     }
+// };
+
+// Resend OTP
+exports.resendOTP = async (req, res, next) => {
+    const { email, type } = req.body; // type can be 'email' or 'password'
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ success: false, msg: 'User not found' });
+        }
+
+        const otp = generateOTP();
+        let subject, text;
+
+        if (type === 'email') {
+            user.emailVerificationOTP = otp;
+            user.emailVerificationExpires = Date.now() + 3600000; // 1 hour
+            subject = 'Videoplay Account Verification';
+            text = `Hello ${user.name},\n\nPlease verify your account using the OTP: ${otp}\n\nThank You!\n`;
+        } else if (type === 'password') {
+            user.resetPasswordOTP = otp;
+            user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+            subject = 'Videoplay Password Reset';
+            text = `Hello,\n\nPlease reset your password using the OTP: ${otp}\n\nThank You!\n`;
+        } else {
+            return res.status(400).json({ success: false, msg: 'Invalid type' });
+        }
+
+        await user.save();
+
+        const emailResponse = await sendOTPEmail(email, subject, text);
+
+        if (!emailResponse.success) {
+            return res.status(500).json({ success: false, msg: `Failed to send ${type === 'email' ? 'verification' : 'password reset'} OTP`, error: emailResponse.error });
+        }
+
+        res.json({ success: true, msg: `${type === 'email' ? 'Verification' : 'Password reset'} OTP sent` });
     } catch (err) {
         next(err);
     }
