@@ -4,9 +4,9 @@ const options = {
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "Asset Tracking API",
+      title: "Video Hosting Platform API",
       version: "1.0.0",
-      description: "API documentation for the Asset Tracking application",
+      description: "API documentation for the Video Hosting Platform",
     },
     servers: [
       {
@@ -69,10 +69,16 @@ const options = {
         UserUpdate: {
           type: "object",
           properties: {
-            name: {
+            firstName: {
               type: "string",
             },
-            email: {
+            lastName: {
+              type: "string",
+            },
+            country: {
+              type: "string",
+            },
+            city: {
               type: "string",
             },
             role: {
@@ -83,7 +89,7 @@ const options = {
         },
         Video: {
           type: "object",
-          required: ["title", "description"],
+          required: ["title", "description", "thumbnailFileId", "uploadedBy"],
           properties: {
             title: {
               type: "string",
@@ -95,6 +101,22 @@ const options = {
               type: "string",
             },
             videoFileId: {
+              type: "string",
+            },
+            thumbnailFileId: {
+              type: "string",
+            },
+            duration: {
+              type: "number",
+            },
+            views: {
+              type: "number",
+              default: 0,
+            },
+            uploadedBy: {
+              type: "string",
+            },
+            editedBy: {
               type: "string",
             },
             date: {
