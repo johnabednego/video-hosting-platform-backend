@@ -21,6 +21,13 @@ const VideoSchema = new mongoose.Schema({
     ref: 'uploads.files',
     required: [true, 'Thumbnail is required'],
   },
+  duration: {
+    type: Number, // Duration in seconds
+  },
+  views: {
+    type: Number,
+    default: 0,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Video', VideoSchema);

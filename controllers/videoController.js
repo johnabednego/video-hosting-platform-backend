@@ -1,7 +1,7 @@
 const Video = require("../models/Video");
-const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
+const ffmpeg = require('fluent-ffmpeg');
 const { getGridfsBucket } = require("../config/db");
 
 // Supported video MIME types
@@ -53,10 +53,12 @@ exports.uploadVideo = async (req, res, next) => {
         !req.files.thumbnail[0] ||
         !supportedImageTypes.includes(req.files.thumbnail[0].mimetype)
       ) {
-        return res.status(400).json({
-          success: false,
-          msg: "A valid thumbnail image is required (jpeg, png, gif)",
-        });
+        return res
+          .status(400)
+          .json({
+            success: false,
+            msg: "A valid thumbnail image is required (jpeg, png, gif)",
+          });
       }
 
       // Create a read stream from the temporary video file
@@ -66,85 +68,99 @@ exports.uploadVideo = async (req, res, next) => {
         "uploads",
         req.files.videoFile[0].filename
       );
-      const videoReadStream = fs.createReadStream(videoFilePath);
 
-      // Create a write stream to GridFSBucket for the video
-      const videoUploadStream = gridfsBucket.openUploadStream(
-        req.files.videoFile[0].filename,
-        {
-          contentType: req.files.videoFile[0].mimetype,
-          metadata: {
-            title,
-            description,
-          },
+      // Extract video duration
+      ffmpeg.ffprobe(videoFilePath, async (err, metadata) => {
+        if (err) {
+          console.error("Error extracting video metadata:", err);
+          return res.status(500).json({ success: false, msg: "Error extracting video metadata" });
         }
-      );
 
-      // Pipe the read stream to the write stream
-      videoReadStream.pipe(videoUploadStream);
+        const duration = metadata.format.duration;
 
-      videoUploadStream.on("error", (err) => {
-        console.error("Error uploading to GridFS:", err);
-        next(err);
-      });
+        // Create a read stream from the temporary video file
+        const videoReadStream = fs.createReadStream(videoFilePath);
 
-      videoUploadStream.on("finish", async () => {
-        // Remove the temporary video file
-        fs.unlink(videoFilePath, (err) => {
-          if (err) {
-            console.error("Error deleting temporary file:", err);
-          }
-        });
-
-        // Create a read stream from the temporary thumbnail file
-        const thumbnailFilePath = path.join(
-          __dirname,
-          "..",
-          "uploads",
-          req.files.thumbnail[0].filename
-        );
-        const thumbnailReadStream = fs.createReadStream(thumbnailFilePath);
-
-        // Create a write stream to GridFSBucket for the thumbnail
-        const thumbnailUploadStream = gridfsBucket.openUploadStream(
-          req.files.thumbnail[0].filename,
+        // Create a write stream to GridFSBucket for the video
+        const videoUploadStream = gridfsBucket.openUploadStream(
+          req.files.videoFile[0].filename,
           {
-            contentType: req.files.thumbnail[0].mimetype,
+            contentType: req.files.videoFile[0].mimetype,
+            metadata: {
+              title,
+              description,
+              duration,
+            },
           }
         );
 
         // Pipe the read stream to the write stream
-        thumbnailReadStream.pipe(thumbnailUploadStream);
+        videoReadStream.pipe(videoUploadStream);
 
-        thumbnailUploadStream.on("error", (err) => {
-          console.error("Error uploading thumbnail to GridFS:", err);
+        videoUploadStream.on("error", (err) => {
+          console.error("Error uploading to GridFS:", err);
           next(err);
         });
 
-        thumbnailUploadStream.on("finish", async () => {
-          // Remove the temporary thumbnail file
-          fs.unlink(thumbnailFilePath, (err) => {
+        videoUploadStream.on("finish", async () => {
+          // Remove the temporary video file
+          fs.unlink(videoFilePath, (err) => {
             if (err) {
-              console.error("Error deleting temporary thumbnail file:", err);
+              console.error("Error deleting temporary file:", err);
             }
           });
 
-          // Save video details in MongoDB
-          const newVideo = new Video({
-            title,
-            description,
-            videoFileId: videoUploadStream.id,
-            thumbnailFileId: thumbnailUploadStream.id,
+          // Create a read stream from the temporary thumbnail file
+          const thumbnailFilePath = path.join(
+            __dirname,
+            "..",
+            "uploads",
+            req.files.thumbnail[0].filename
+          );
+          const thumbnailReadStream = fs.createReadStream(thumbnailFilePath);
+
+          // Create a write stream to GridFSBucket for the thumbnail
+          const thumbnailUploadStream = gridfsBucket.openUploadStream(
+            req.files.thumbnail[0].filename,
+            {
+              contentType: req.files.thumbnail[0].mimetype,
+            }
+          );
+
+          // Pipe the read stream to the write stream
+          thumbnailReadStream.pipe(thumbnailUploadStream);
+
+          thumbnailUploadStream.on("error", (err) => {
+            console.error("Error uploading thumbnail to GridFS:", err);
+            next(err);
           });
 
-          try {
-            const video = await newVideo.save();
-            res.status(201).json({ success: true, data: video });
-          } catch (validationError) {
-            res
-              .status(400)
-              .json({ success: false, message: validationError.message });
-          }
+          thumbnailUploadStream.on("finish", async () => {
+            // Remove the temporary thumbnail file
+            fs.unlink(thumbnailFilePath, (err) => {
+              if (err) {
+                console.error("Error deleting temporary thumbnail file:", err);
+              }
+            });
+
+            // Save video details in MongoDB
+            const newVideo = new Video({
+              title,
+              description,
+              videoFileId: videoUploadStream.id,
+              thumbnailFileId: thumbnailUploadStream.id,
+              duration,
+            });
+
+            try {
+              const video = await newVideo.save();
+              res.status(201).json({ success: true, data: video });
+            } catch (validationError) {
+              res
+                .status(400)
+                .json({ success: false, message: validationError.message });
+            }
+          });
         });
       });
     } else if (videoUrl) {
@@ -155,10 +171,7 @@ exports.uploadVideo = async (req, res, next) => {
       ) {
         return res
           .status(400)
-          .json({
-            success: false,
-            msg: "A valid thumbnail image is required (jpeg, png, gif)",
-          });
+          .json({ success: false, msg: "A valid thumbnail image is required (jpeg, png, gif)" });
       }
 
       // Create a read stream from the temporary thumbnail file
@@ -222,6 +235,58 @@ exports.uploadVideo = async (req, res, next) => {
     next(err);
   }
 };
+
+// Edit Video
+exports.editVideo = async (req, res, next) => {
+  const { id } = req.params;
+  const { title, description } = req.body;
+
+  try {
+    const video = await Video.findById(id);
+    if (!video) {
+      return res.status(404).json({ success: false, msg: 'Video not found' });
+    }
+
+    video.title = title || video.title;
+    video.description = description || video.description;
+
+    await video.save();
+
+    res.json({ success: true, data: video });
+  } catch (err) {
+    console.error('Error editing video:', err);
+    next(err);
+  }
+};
+
+// Delete Video
+exports.deleteVideo = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const video = await Video.findById(id);
+    if (!video) {
+      return res.status(404).json({ success: false, msg: 'Video not found' });
+    }
+
+    // Delete video from GridFS
+    const gridfsBucket = getGridfsBucket();
+    if (video.videoFileId) {
+      await gridfsBucket.delete(video.videoFileId);
+    }
+    if (video.thumbnailFileId) {
+      await gridfsBucket.delete(video.thumbnailFileId);
+    }
+
+    await video.remove();
+
+    res.json({ success: true, msg: 'Video deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting video:', err);
+    next(err);
+  }
+};
+
 
 // Get Video by ID
 exports.getVideoById = async (req, res, next) => {
@@ -316,6 +381,26 @@ exports.getThumbnailStream = async (req, res, next) => {
     readStream.pipe(res);
   } catch (err) {
     console.error('Error fetching thumbnail by video ID:', err);
+    next(err);
+  }
+};
+
+// Increment Video Views
+exports.incrementViews = async (req, res, next) => {
+  const { id } = req.params;
+
+  try {
+    const video = await Video.findById(id);
+    if (!video) {
+      return res.status(404).json({ success: false, msg: 'Video not found' });
+    }
+
+    video.views += 1;
+    await video.save();
+
+    res.json({ success: true, views: video.views });
+  } catch (err) {
+    console.error('Error incrementing views:', err);
     next(err);
   }
 };

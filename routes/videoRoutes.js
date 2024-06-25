@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { getVideoById, getAllVideos, getVideoStream, getThumbnailStream, uploadVideo } = require('../controllers/videoController');
+const { getVideoById, getAllVideos, getVideoStream, getThumbnailStream, uploadVideo, incrementViews, editVideo, deleteVideo } = require('../controllers/videoController');
 const upload = require('../middleware/upload');
 const auth = require('../middleware/authMiddleware');
+const { isAdmin } = require('../middleware/roleMiddleware');
 
 /**
  * @swagger
@@ -46,7 +47,7 @@ const auth = require('../middleware/authMiddleware');
  *       500:
  *         description: Internal server error
  */
-router.post('/upload', auth, upload.fields([{ name: 'videoFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), uploadVideo);
+router.post('/upload', auth, isAdmin, upload.fields([{ name: 'videoFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), uploadVideo);
 
 /**
  * @swagger
@@ -87,7 +88,7 @@ router.get('/:id', auth, getVideoById);
  *       500:
  *         description: Internal server error
  */
-router.get('/', auth, getAllVideos);
+router.get('/', getAllVideos);
 
 /**
  * @swagger
@@ -110,7 +111,7 @@ router.get('/', auth, getAllVideos);
  *       500:
  *         description: Internal server error
  */
-router.get('/stream/:filename', getVideoStream);
+router.get('/stream/:filename', auth, getVideoStream);
 
 /**
  * @swagger
@@ -135,6 +136,90 @@ router.get('/stream/:filename', getVideoStream);
  *       500:
  *         description: Internal server error
  */
-router.get('/thumbnail/:id', getThumbnailStream);
+router.get('/thumbnail/:id', auth, getThumbnailStream);
+
+/**
+ * @swagger
+ * /api/videos/view/{id}:
+ *   post:
+ *     summary: Increment video views
+ *     tags: [Videos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Video ID
+ *     responses:
+ *       200:
+ *         description: Video views incremented successfully
+ *       404:
+ *         description: Video not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/view/:id', auth, incrementViews);
+
+/**
+ * @swagger
+ * /api/videos/{id}:
+ *   put:
+ *     summary: Edit video
+ *     tags: [Videos]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Video ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Video edited successfully
+ *       404:
+ *         description: Video not found
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/:id', auth, isAdmin, editVideo);
+
+/**
+ * @swagger
+ * /api/videos/{id}:
+ *   delete:
+ *     summary: Delete video
+ *     tags: [Videos]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: Video ID
+ *     responses:
+ *       200:
+ *         description: Video deleted successfully
+ *       404:
+ *         description: Video not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete('/:id', auth, isAdmin, deleteVideo);
 
 module.exports = router;

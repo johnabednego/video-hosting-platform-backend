@@ -117,11 +117,12 @@ exports.login = async (req, res, next) => {
             expiresIn: '1h',
         });
 
-        res.json({ success: true, token });
+        res.json({ success: true, token, data: { id: user.id, firstName: user.firstName, lastName: user.lastName, email: user.email, role: user.role, country: user.country, city: user.city } });
     } catch (err) {
         next(err);
     }
 };
+
 
 // Verify Email OTP
 exports.verifyEmailOTP = async (req, res, next) => {

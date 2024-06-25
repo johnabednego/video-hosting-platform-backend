@@ -27,9 +27,12 @@ const options = {
       schemas: {
         User: {
           type: "object",
-          required: ["name", "email", "password", "role"],
+          required: ["firstName", "lastName", "email", "password", "country", "city", "role"],
           properties: {
-            name: {
+            firstName: {
+              type: "string",
+            },
+            lastName: {
               type: "string",
             },
             email: {
@@ -38,9 +41,16 @@ const options = {
             password: {
               type: "string",
             },
+            country: {
+              type: "string",
+            },
+            city: {
+              type: "string",
+            },
             role: {
               type: "string",
               enum: ["admin", "user"],
+              default: "user"
             },
           },
         },
