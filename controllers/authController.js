@@ -41,11 +41,26 @@ const sendOTPEmail = async (email, subject, text) => {
 
 // Register User
 exports.register = async (req, res, next) => {
-    const { name, email, password, role } = req.body;
+    const { firstName, lastName, email, password, country, city, role } = req.body;
 
     try {
-        if (!name || !email || !password) {
-            return res.status(400).json({ success: false, msg: 'Please provide name, email, and password' });
+        if (!firstName) {
+            return res.status(400).json({ success: false, msg: 'First Name is required' });
+        }
+        if (!lastName) {
+            return res.status(400).json({ success: false, msg: 'Last Name is required' });
+        }
+        if (!email) {
+            return res.status(400).json({ success: false, msg: 'Email is required' });
+        }
+        if (!password) {
+            return res.status(400).json({ success: false, msg: 'Password is required' });
+        }
+        if (!country) {
+            return res.status(400).json({ success: false, msg: 'Country is required' });
+        }
+        if (!city) {
+            return res.status(400).json({ success: false, msg: 'City is required' });
         }
 
         let user = await User.findOne({ email });
@@ -58,9 +73,12 @@ exports.register = async (req, res, next) => {
 
         const otp = generateOTP();
         user = new User({
-            name,
+            firstName,
+            lastName,
             email,
             password: hashedPassword,
+            country,
+            city,
             role: role || 'user', // Default to 'user' if no role is specified
             emailVerificationOTP: otp,
             emailVerificationExpires: Date.now() + 3600000, // 1 hour
@@ -69,19 +87,37 @@ exports.register = async (req, res, next) => {
         await user.save();
 
         const subject = 'Videoplay Account Verification';
-        const text = `Hello ${name},\n\nPlease verify your account using the OTP: ${otp}\n\nThank You!\n`;
+        const text = `Hello ${firstName},\n\nPlease verify your account using the OTP: ${otp}\n\nThank You!\n`;
 
         const emailResponse = await sendOTPEmail(email, subject, text);
 
         if (!emailResponse.success) {
+            console.error('Email sending error:', emailResponse.error);
             return res.status(500).json({ success: false, msg: 'Failed to send verification email', error: emailResponse.error });
         }
 
-        res.status(201).json({ success: true, msg: 'User registered successfully. Please check your email to verify your account.' });
+        const payload = {
+            user: {
+                id: user.id,
+                role: user.role,
+            },
+        };
+
+        const token = jwt.sign(payload, process.env.JWT_SECRET, {
+            expiresIn: '1h',
+        });
+
+        res.status(201).json({
+            success: true,
+            token,
+            msg: 'User registered successfully. Please check your email to verify your account.',
+        });
     } catch (err) {
-        next(err);
+        console.error('Server Error:', err);
+        return res.status(500).json({ success: false, error: 'Server Error' });
     }
 };
+
 
 // Login User
 exports.login = async (req, res, next) => {
