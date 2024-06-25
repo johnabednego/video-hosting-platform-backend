@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { editUserInfo, getAllUsers, getUserDetails, getUserInfo } = require('../controllers/userController');
+const { editUserInfo, getAllUsers, getAllAdmins, getUserDetails, getUserInfo } = require('../controllers/userController');
 const auth = require('../middleware/authMiddleware');
 const { isAdmin } = require('../middleware/roleMiddleware');
 
@@ -48,7 +48,7 @@ router.put('/edit', auth, editUserInfo);
  * @swagger
  * /api/users:
  *   get:
- *     summary: Get all users (Admin)
+ *     summary: Get all regular users (Admin)
  *     tags: [Users]
  *     security:
  *       - BearerAuth: []
@@ -59,6 +59,22 @@ router.put('/edit', auth, editUserInfo);
  *         description: Internal server error
  */
 router.get('/', auth, isAdmin, getAllUsers);
+
+/**
+ * @swagger
+ * /api/users/admins:
+ *   get:
+ *     summary: Get all admins (Admin)
+ *     tags: [Users]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of admins retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/admins', auth, isAdmin, getAllAdmins);
 
 /**
  * @swagger

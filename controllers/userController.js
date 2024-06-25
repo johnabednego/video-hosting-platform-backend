@@ -1,5 +1,25 @@
 const User = require('../models/User');
 
+// Get All Regular Users (Admin)
+exports.getAllUsers = async (req, res, next) => {
+    try {
+        const users = await User.find({ role: 'user' });
+        res.json({ success: true, data: users });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Get All Admins (Admin)
+exports.getAllAdmins = async (req, res, next) => {
+    try {
+        const admins = await User.find({ role: 'admin' });
+        res.json({ success: true, data: admins });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // Edit User Information (User)
 exports.editUserInfo = async (req, res, next) => {
     const { firstName, lastName, country, city } = req.body;
@@ -18,16 +38,6 @@ exports.editUserInfo = async (req, res, next) => {
         await user.save();
 
         res.json({ success: true, data: user });
-    } catch (err) {
-        next(err);
-    }
-};
-
-// Get All Users (Admin)
-exports.getAllUsers = async (req, res, next) => {
-    try {
-        const users = await User.find();
-        res.json({ success: true, data: users });
     } catch (err) {
         next(err);
     }
