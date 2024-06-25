@@ -28,6 +28,15 @@ const VideoSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  uploadedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+  },
+  editedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Video', VideoSchema);

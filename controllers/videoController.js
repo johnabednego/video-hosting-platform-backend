@@ -16,6 +16,7 @@ const supportedVideoTypes = [
 const MAX_FILE_SIZE = 1024 * 1024 * 500; // 500MB
 
 const supportedImageTypes = ["image/jpeg", "image/png", "image/gif"];
+
 // Upload Video
 exports.uploadVideo = async (req, res, next) => {
   const { title, description, videoUrl } = req.body;
@@ -150,6 +151,7 @@ exports.uploadVideo = async (req, res, next) => {
               videoFileId: videoUploadStream.id,
               thumbnailFileId: thumbnailUploadStream.id,
               duration,
+              uploadedBy: req.user.id, // Store the ID of the admin who uploaded the video
             });
 
             try {
@@ -213,6 +215,7 @@ exports.uploadVideo = async (req, res, next) => {
           description,
           videoUrl,
           thumbnailFileId: thumbnailUploadStream.id,
+          uploadedBy: req.user.id, // Store the ID of the admin who uploaded the video
         });
 
         try {
@@ -249,6 +252,7 @@ exports.editVideo = async (req, res, next) => {
 
     video.title = title || video.title;
     video.description = description || video.description;
+    video.editedBy = req.user.id; // Store the ID of the admin who edited the video
 
     await video.save();
 
@@ -258,6 +262,7 @@ exports.editVideo = async (req, res, next) => {
     next(err);
   }
 };
+
 
 // Delete Video
 exports.deleteVideo = async (req, res, next) => {
@@ -291,7 +296,8 @@ exports.deleteVideo = async (req, res, next) => {
 // Get Video by ID
 exports.getVideoById = async (req, res, next) => {
   try {
-    const video = await Video.findById(req.params.id).populate('videoFileId thumbnailFileId');
+    const video = await Video.findById(req.params.id)
+      .populate('videoFileId thumbnailFileId uploadedBy editedBy', 'firstName lastName email');
     if (!video) {
       return res.status(404).json({ success: false, msg: 'Video not found' });
     }
@@ -310,7 +316,9 @@ exports.getVideoById = async (req, res, next) => {
 // Get All Videos
 exports.getAllVideos = async (req, res, next) => {
   try {
-    const videos = await Video.find().sort({ date: -1 }).populate('videoFileId thumbnailFileId');
+    const videos = await Video.find()
+      .sort({ date: -1 })
+      .populate('videoFileId thumbnailFileId uploadedBy editedBy', 'firstName lastName email');
 
     // Construct the video URLs using the filename
     const videosWithUrl = videos.map(video => {
